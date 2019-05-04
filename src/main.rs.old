@@ -1,0 +1,44 @@
+use std::env;
+use std::collections::LinkedList;
+
+enum LamStr {
+    Applics(Vec<String>),
+    Lam((String, Box<LamStr>))
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("Missing lambda term");
+        return
+    }
+    let lambda_string = &args[1];
+    interpret_term(lambda_string);
+}
+
+fn interpret_term(lam_str: &String) {
+    let mut formula = LamStr::Applics(Vec::new());
+    let mut interp_stack: LinkedList<Vec<char>> = LinkedList::new();
+    //let mut applics: Vec<char>
+    // We read lambda terms of the form %(a.b@a@d)
+    interp_stack.push_front(Vec::new());
+    for c in lam_str.chars() {
+        if c != ' ' {
+            if c == '(' {
+                interp_stack.push_front(Vec::new());
+            } else if c == ')' {
+                let term = interp_stack.pop_front().unwrap();
+                if term.len() != 0 {
+                    
+                }
+            } else if interp_stack.front().unwrap().len() == 0 {
+                interp_stack.front_mut().unwrap().push(c);
+                interp_stack.front_mut().unwrap().push('$');
+                interp_stack.push_front(Vec::new());
+            } else {
+                interp_stack.front_mut().unwrap().push('$');
+                interp_stack.push_front(Vec::new());
+            }
+        }
+    }
+}
