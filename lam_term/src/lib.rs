@@ -8,8 +8,8 @@ pub enum LamTerm {
 }
 
 use LamTerm::*;
-/*
-impl<'a> fmt::Display for LamTerm<'a> {
+
+impl<'a> fmt::Display for LamTerm {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Abstraction(varcount, body) => write!(f, "(%{} {})", varcount, body),
@@ -18,7 +18,7 @@ impl<'a> fmt::Display for LamTerm<'a> {
         }
     }
 }
-*/
+
 pub fn testterm1() -> LamTerm {
     Application(
         Box::new(Abstraction(1, Box::new(Application(

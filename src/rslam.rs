@@ -4,11 +4,11 @@ use lam_term::LamTerm;
 use LamTerm::*;
 
 struct Closure<'a> {
-    term: &'a LamTerm<'a>,
+    term: &'a LamTerm,
     environ: isize
 }
 
-pub fn run_krivine<'a>(term: &'a LamTerm) -> (&'a LamTerm<'a>, usize) {
+pub fn run_krivine<'a>(term: &'a LamTerm) -> (&'a LamTerm, usize) {
     let mut heap: Vec<(isize, Vec<Closure>)> = Vec::new();
     let mut curenviron: isize = -1;
     let mut stack: Vec<Closure> = Vec::new();
@@ -22,7 +22,7 @@ pub fn run_krivine<'a>(term: &'a LamTerm) -> (&'a LamTerm<'a>, usize) {
                     term: right,
                     environ: curenviron
                 });
-                curterm = *left
+                curterm = left
             },
             LamTerm::Abstraction(varcount, body) => {
                 if stack.len() < *varcount {

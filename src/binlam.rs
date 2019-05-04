@@ -61,7 +61,7 @@ pub fn bin_term_to_lam<'a>(term: &[usize], termbuffer: &Vec<usize>) -> Result<La
     }
 }*/
 
-pub fn bin_term_to_lam<'a>(term: &[usize], termbuffer: &Vec<usize>) -> Result<Box<LamTerm>, &'a str> {
+pub fn bin_term_to_lam<'a>(term: &[usize], termbuffer: &[usize]) -> Result<Box<LamTerm>, &'a str> {
     match term[0] {
         1 => {
             let left = bin_term_to_lam(&termbuffer[term[1]..term[2]], termbuffer)?;
