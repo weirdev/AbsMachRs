@@ -26,7 +26,7 @@ fn test_bin_kirvine(term: &Box<LamTerm>) {
     match binlam::run_kirvine(&binterm) {
         Ok((resterm, steps)) => {
             println!("{}", steps);
-            println!("{}", binlam::bin_term_to_lam(resterm, &binterm[..]).ok().unwrap())
+            println!("{}", binlam::bin_term_to_lam(&resterm, &resterm).ok().unwrap())
         },
         Err(message) => println!("{}", message)
     }

@@ -195,11 +195,12 @@ fn secd_closure_to_closed_term<'a>(clos: usize, heap: &Vec<(isize, usize)>, vals
                     term: st2,
                     environ: vals[clos].environ
             };
+            let pos = vals.len();
             vals.push(recclos1);
             vals.push(recclos2);
             Box::new(Application(
-                secd_closure_to_closed_term(vals.len()-2, heap, vals, level),
-                secd_closure_to_closed_term(vals.len()-1, heap, vals, level)))
+                secd_closure_to_closed_term(pos, heap, vals, level),
+                secd_closure_to_closed_term(pos+1, heap, vals, level)))
             },
         Var(v,k) => {
             if *v >= level {

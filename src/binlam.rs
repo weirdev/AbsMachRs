@@ -43,24 +43,6 @@ pub fn lam_term_to_bin(term: &LamTerm, buffer: &mut Vec<usize>) -> (usize, usize
     }
 }
 
-/*
-pub fn bin_term_to_lam<'a>(term: &[usize], termbuffer: &Vec<usize>) -> Result<LamTerm<'a>, &'a str> {
-    match term[0] {
-        1 => {
-            let left: Result<LamTerm<'a>, &'a str> = bin_term_to_lam(&termbuffer[term[1]..term[2]], termbuffer);
-            let right: Result<LamTerm<'a>, &'a str> = bin_term_to_lam(&termbuffer[term[3]..term[4]], termbuffer);
-            Ok(Application(&left?, &right?))
-        },
-        2 => {
-            let varcount = term[1];
-            let body = bin_term_to_lam(&termbuffer[term[2]..term[3]], termbuffer);
-            Ok(Abstraction(varcount, &body?))
-        },
-        0 => Ok(Var(term[1], term[2])),
-        _ => Err("Error translating binary term")
-    }
-}*/
-
 pub fn bin_term_to_lam<'a>(term: &[usize], termbuffer: &[usize]) -> Result<Box<LamTerm>, &'a str> {
     match term[0] {
         1 => {
@@ -78,7 +60,63 @@ pub fn bin_term_to_lam<'a>(term: &[usize], termbuffer: &[usize]) -> Result<Box<L
     }
 }
 
-pub fn run_kirvine<'a>(term: &'a Vec<usize>) -> Result<(&'a [usize], usize), &'a str> {
+pub fn run_kirvine<'a>(term: &'a Vec<usize>) -> Result<(Vec<usize>, usize), &'a str> {
+    let ((clos, heap), steps) = kirvine_compute(term)?;
+    let mut buffer: Vec<usize> = Vec::new();
+    krivine_closure_to_closed_term(clos, &heap, term, &mut buffer, 0);
+    Ok((buffer, steps))
+}
+
+fn krivine_closure_to_closed_term<'a>(clos: (&'a [usize], isize), heap: &Vec<(isize, Vec<(&[usize], isize)>)>, termbuffer: &Vec<usize>, buffer: &mut Vec<usize>, level: usize) -> (usize, usize) {
+    match clos.0[0] {
+        2 => {
+            let start = buffer.len();
+            buffer.push(2); // Abstraction instruction code
+            buffer.push(clos.0[1]);
+            let pos = buffer.len();
+            buffer.push(0);
+            buffer.push(0);
+            let (startbody, endbody) = krivine_closure_to_closed_term((&termbuffer[clos.0[2]..clos.0[3]], clos.1), heap, termbuffer, buffer, level+1);
+            buffer[pos] = startbody;
+            buffer[pos+1] = endbody;
+            (start, pos+2)
+        },
+        1 => {
+            let start = buffer.len();
+            buffer.push(1); // Application instruction code
+            let pos = buffer.len();
+            buffer.push(0);
+            buffer.push(0);
+            buffer.push(0);
+            buffer.push(0);
+            let (lstart, lend) = krivine_closure_to_closed_term((&termbuffer[clos.0[1]..clos.0[2]], clos.1), heap, termbuffer, buffer, level);
+            buffer[pos] = lstart;
+            buffer[pos + 1] = lend;
+            let (rstart, rend) = krivine_closure_to_closed_term((&termbuffer[clos.0[3]..clos.0[4]], clos.1), heap, termbuffer, buffer, level);
+            buffer[pos + 2] = rstart;
+            buffer[pos + 3] = rend;
+            (start, pos + 4)
+        },
+        0 => {
+            if clos.0[1] >= level {
+                let mut env = clos.1;
+                for _ in level..clos.0[1] {
+                    env = heap[env as usize].0;
+                }
+                return krivine_closure_to_closed_term(heap[env as usize].1[clos.0[2]-1], heap, termbuffer, buffer, 0);
+            } else {
+                let start = buffer.len();
+                buffer.push(0); // Var instruction code
+                buffer.push(clos.0[1]);
+                buffer.push(clos.0[2]);
+                return (start, start+3)
+            }
+        },
+        _ => panic!("Invalid instruction")
+    }
+}
+
+pub fn kirvine_compute<'a>(term: &'a Vec<usize>) -> Result<(((&'a [usize], isize), Vec<(isize, Vec<(&[usize], isize)>)>), usize), &'a str> {
     let mut heap: Vec<(isize, Vec<(&[usize], isize)>)> = Vec::new();
     let mut curenviron: isize = -1;
     let mut stack: Vec<(&[usize], isize)> = Vec::new();
@@ -95,7 +133,7 @@ pub fn run_kirvine<'a>(term: &'a Vec<usize>) -> Result<(&'a [usize], usize), &'a
             2 => {
                 let varcount = curterm[1];
                 if stack.len() < varcount {
-                    return Ok((curterm, steps));
+                    break;
                 }
                 heap.push((curenviron, stack.split_off(stack.len() - varcount)));
                 curenviron = (heap.len() - 1) as isize;
@@ -109,7 +147,7 @@ pub fn run_kirvine<'a>(term: &'a Vec<usize>) -> Result<(&'a [usize], usize), &'a
                         if curenviron >= 0 {
                             curenviron = heap[curenviron as usize].0;
                         } else {
-                            return Ok((curterm, steps));
+                            break;
                         }
                     }
                 }
@@ -119,19 +157,16 @@ pub fn run_kirvine<'a>(term: &'a Vec<usize>) -> Result<(&'a [usize], usize), &'a
                     curterm = clos.0;
                     curenviron = clos.1;
                 } else {
-                    return Ok((curterm, steps));
+                    break;
                 }
             },
             _ => return Err("Error Computing Term")
         }
     }
+    Ok((((curterm, curenviron), heap), steps))
 }
 
-pub fn run_secd<'a>(term: &'a Vec<usize>) -> () {
-
-}
-
-fn secd_compute<'a>(term: &'a Vec<usize>) -> Result<((usize, Vec<(isize, usize)>, Vec<(usize, isize)>), usize), &'a str> {
+pub fn secd_compute<'a>(term: &'a Vec<usize>) -> Result<((usize, Vec<(isize, usize)>, Vec<(usize, isize)>), usize), &'a str> {
     let mut stack: Vec<usize> = Vec::new();
     let mut vals: Vec<(usize, isize)> = Vec::new();
     let mut heap: Vec<(isize, usize)> = Vec::new();
