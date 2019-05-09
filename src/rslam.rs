@@ -28,6 +28,7 @@ fn krivine_compute<'a>(term: &'a Box<LamTerm>) -> (Closure, Vec<(isize, Vec<Clos
     let mut curterm = term;
     let mut steps = 0;
     loop {
+        println!("{}", curterm);
         steps += 1;
         match (*curterm).borrow() {
             Application(ref left, ref right) => {

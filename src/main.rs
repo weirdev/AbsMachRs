@@ -9,7 +9,7 @@ use lam_term::{testterm1, LamTerm};
 
 fn main() {
     let term = pars_arg().unwrap();
-    //test_rs_kirvine(&term);
+    test_rs_kirvine(&term);
     test_rs_secd(&term);
     test_bin_kirvine(&term);
 }
