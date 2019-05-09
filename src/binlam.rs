@@ -126,3 +126,95 @@ pub fn run_kirvine<'a>(term: &'a Vec<usize>) -> Result<(&'a [usize], usize), &'a
         }
     }
 }
+
+pub fn run_secd<'a>(term: &'a Vec<usize>) -> () {
+
+}
+
+fn secd_compute<'a>(term: &'a Vec<usize>) -> Result<((usize, Vec<(isize, usize)>, Vec<(usize, isize)>), usize), &'a str> {
+    let mut stack: Vec<usize> = Vec::new();
+    let mut vals: Vec<(usize, isize)> = Vec::new();
+    let mut heap: Vec<(isize, usize)> = Vec::new();
+    let mut curenviron: isize = -1;
+    let mut curtermlocs: Vec<isize> = termseq(0, term);
+    let mut dump: Vec<(Vec<usize>, isize, Vec<isize>)> = Vec::new();
+    let mut steps = 0;
+
+    loop {
+        steps += 1;
+        if curtermlocs.len() == 0 {
+            let res = stack.pop().unwrap();
+            if dump.len() == 0 {
+                return Ok(((res, heap, vals), steps));
+            }
+            let sec = dump.pop().unwrap();
+            stack = sec.0;
+            curenviron = sec.1;
+            curtermlocs = sec.2;
+            stack.push(res);
+            continue;
+        }
+        let toptermloc = curtermlocs.pop().unwrap();
+        match toptermloc {
+            // Application
+            -1 => {
+                let left = vals[stack.pop().unwrap()];
+                let rightpos = stack.pop().unwrap();
+                curenviron = left.1;
+                heap.push((curenviron, rightpos));
+                curenviron = (heap.len() as isize) - 1;
+                match term[left.0] {
+                    // Abstraction
+                    2 => {
+                        match term[term[left.0 + 2]] {
+                            // Application
+                            1 => {
+                                dump.push((stack, curenviron, curtermlocs));
+                                stack = Vec::new();
+                                curtermlocs = termseq(term[left.0 + 2], term);
+                            },
+                            // Abstraction
+                            2 => {
+                                vals.push((term[left.0 + 2], curenviron));
+                                stack.push(vals.len() - 1);
+                            },
+                            // Var
+                            0 => curtermlocs.push(term[left.0 + 2] as isize),
+                            _ => return Err("Error computing term")
+                        }
+                    },
+                    _ => return Err("Only closed terms allowed")
+                }
+            },
+            _ => match term[toptermloc as usize] {
+                // Abstraction
+                2 => {
+                    vals.push((toptermloc as usize, curenviron));
+                    stack.push(vals.len() - 1);
+                },
+                // Var
+                0 => {
+                    for _ in 0..term[(toptermloc as usize) + 1] {
+                        curenviron = heap[curenviron as usize].0;
+                    }
+                    stack.push(heap[curenviron as usize].1);
+                }
+                _ => return Err("Abstractions do not exist")
+            }
+        }
+    }
+}
+
+fn termseq(termstart: usize, termbuffer: &[usize]) -> Vec<isize> {
+    let mut seq: Vec<isize> = Vec::new();
+    match termbuffer[termstart] {
+        // Application
+        1 => {
+            seq.push(-1);
+            seq.extend(termseq(termbuffer[termstart + 1], termbuffer));
+            seq.extend(termseq(termbuffer[termstart + 3], termbuffer));
+        },
+        _ => seq.push(termstart as isize)
+    }
+    seq
+}
